@@ -5,7 +5,10 @@ from matplotlib import pyplot as plt
 
 
 X_scale = [-1000, 0]
-Y_scale = [10**-4, 10**-6]
+Y_scale = [10**-6, 10**-4]
+
+# X_scale = [-1000, 0]
+# Y_scale = [0, 7*10**21]
 
 
 def quantize_colors(image, n_colors):
@@ -96,6 +99,7 @@ def main(image_path, n_datasets):
 
     # Y-axis scaling factor (log)
     y_scaling = np.log10(Y_scale[1] / Y_scale[0]) / h
+    # y_scaling = (Y_scale[1] - Y_scale[0]) / h
 
     # Quantize the image colors to n_datasets + 3 (white+gray+black)
     quantized_image, centroids = quantize_colors(image, n_datasets + 3)
@@ -111,6 +115,8 @@ def main(image_path, n_datasets):
         eroded_image = erode(grayscale_image)
         contours = find_contours(eroded_image)
 
+        cv2.drawContours(image, contours, -1, (0, 255, 0), 3)
+
         x_dashed, y_dashed, x_line, y_line = get_contour_centroids(contours)
 
         for point in list(zip(x_dashed, y_dashed)):
@@ -119,21 +125,34 @@ def main(image_path, n_datasets):
         for point in list(zip(x_line, y_line)):
             cv2.circle(image, tuple(point), 1, (0, 255, 0))
 
-        cv2.imshow("Contours", image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # cv2.imshow("Contours", image)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
 
         x_dashed = [[x * x_scaling + X_scale[0]] for x in x_dashed]
-        y_dashed = [10 ** (y * y_scaling + np.log10(Y_scale[0])) for y in y_dashed]
+        y_dashed = [10 ** ((h - y) * y_scaling + np.log10(Y_scale[0])) for y in y_dashed]
+        # y_dashed = [[(h - y) * y_scaling + Y_scale[0]] for y in y_dashed]
         x_line = [[x * x_scaling + X_scale[0]] for x in x_line]
-        y_line = [10 ** (y * y_scaling + np.log10(Y_scale[0])) for y in y_line]
+        y_line = [10 ** ((h - y) * y_scaling + np.log10(Y_scale[0])) for y in y_line]
+        # y_line = [[(h - y) * y_scaling + Y_scale[0]] for y in y_line]
+
+        np.savez(
+            f"current_hptm_{(','.join(map(str, color)))}.npz",
+            np.array(x_dashed),
+            np.array(y_dashed),
+        )
+        np.savez(
+            f"current_data_{(','.join(map(str, color)))}.npz",
+            np.array(x_dashed),
+            np.array(y_dashed),
+        )
 
         fig, ax = plt.subplots(figsize=(9, 6))
         ax.scatter(x_dashed, y_dashed, s=60, alpha=0.7, edgecolors="k")
         ax.scatter(x_line, y_line, s=60, alpha=0.7, edgecolors="k")
-        ax.set_ylim(bottom=Y_scale[1], top=Y_scale[0])
+        ax.set_ylim(bottom=Y_scale[0], top=Y_scale[1])
         ax.set_yscale("log")
-        plt.show()
+        plt.savefig(f"capacitance_{(','.join(map(str, color)))}.png")
 
 
 main("graph_1.png", 5)
